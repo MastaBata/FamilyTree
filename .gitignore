@@ -1,11 +1,40 @@
-/tmp
-/out-tsc
-
+# dependencies
 /node_modules
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 /.pnp
 .pnp.js
 
-.vscode/*
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+/tmp
+/out-tsc
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# local env files
+.env*.local
+.env
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.idea
+.vscode
