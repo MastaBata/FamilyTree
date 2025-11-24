@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown'
 import { User, Settings, LogOut, ChevronDown } from 'lucide-react'
 
 interface UserMenuProps {
@@ -22,7 +23,12 @@ export function UserMenu({ userEmail }: UserMenuProps) {
   }
 
   return (
-    <div className="relative">
+    <div className="flex items-center gap-2">
+      {/* Notifications */}
+      <NotificationsDropdown />
+
+      {/* User Menu */}
+      <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
@@ -67,6 +73,7 @@ export function UserMenu({ userEmail }: UserMenuProps) {
           </div>
         </>
       )}
+      </div>
     </div>
   )
 }
