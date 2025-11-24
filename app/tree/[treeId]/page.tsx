@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { LogoutButton } from '@/components/auth/LogoutButton'
 import { AddPersonButton } from '@/components/tree/AddPersonButton'
 import { TreeView } from '@/components/tree/TreeView'
+import { ShareModal } from '@/components/tree/ShareModal'
 
 interface TreePageProps {
   params: Promise<{
@@ -78,7 +79,10 @@ export default async function TreeDetailPage({ params }: TreePageProps) {
                 <p className="text-gray-600 mt-1">{tree.description}</p>
               )}
             </div>
-            {canEdit && <AddPersonButton treeId={treeId} userId={user.id} />}
+            <div className="flex gap-2">
+              <ShareModal treeId={treeId} userId={user.id} shareCode={tree.share_code} />
+              {canEdit && <AddPersonButton treeId={treeId} userId={user.id} />}
+            </div>
           </div>
         </div>
       </header>
