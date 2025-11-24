@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { UserMenu } from '@/components/auth/UserMenu'
+import { PersonContacts } from '@/components/person/PersonContacts'
 import { User, Calendar, MapPin, Heart, Users } from 'lucide-react'
 
 interface PersonPageProps {
@@ -68,6 +69,13 @@ export default async function PersonPage({ params }: PersonPageProps) {
     `)
     .or(`person1_id.eq.${personId},person2_id.eq.${personId}`)
     .eq('tree_id', treeId)
+
+  // Get contacts
+  const { data: contacts } = await supabase
+    .from('person_contacts')
+    .select('*')
+    .eq('person_id', personId)
+    .order('sort_order', { ascending: true })
 
   const canEdit = ['owner', 'admin', 'editor'].includes(membership.role)
 
@@ -371,6 +379,14 @@ export default async function PersonPage({ params }: PersonPageProps) {
                 </div>
               </div>
             )}
+
+            {/* Contacts */}
+            <PersonContacts
+              personId={personId}
+              treeId={treeId}
+              canEdit={canEdit}
+              initialContacts={contacts || []}
+            />
 
             {/* Relations */}
             {(parents.length > 0 || spouses.length > 0 || children.length > 0) && (
