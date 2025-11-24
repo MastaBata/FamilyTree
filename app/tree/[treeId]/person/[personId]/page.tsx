@@ -240,7 +240,87 @@ export default async function PersonPage({ params }: PersonPageProps) {
                   </div>
                 </div>
               )}
+
+              {!person.is_alive && person.death_place && (
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Место смерти</p>
+                    <p className="text-gray-900">{person.death_place}</p>
+                  </div>
+                </div>
+              )}
             </div>
+
+            {/* Additional info grid */}
+            {(person.nickname || person.education || person.military_service || person.awards || person.hobbies || person.religion) && (
+              <div className="pt-6 border-t">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Дополнительная информация
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {person.nickname && (
+                    <div className="flex items-start gap-3">
+                      <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Прозвище</p>
+                        <p className="text-gray-900">{person.nickname}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {person.education && (
+                    <div className="flex items-start gap-3">
+                      <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Образование</p>
+                        <p className="text-gray-900">{person.education}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {person.military_service && (
+                    <div className="flex items-start gap-3">
+                      <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Военная служба</p>
+                        <p className="text-gray-900">{person.military_service}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {person.awards && (
+                    <div className="flex items-start gap-3">
+                      <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Награды</p>
+                        <p className="text-gray-900">{person.awards}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {person.hobbies && (
+                    <div className="flex items-start gap-3">
+                      <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Хобби и интересы</p>
+                        <p className="text-gray-900">{person.hobbies}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {person.religion && (
+                    <div className="flex items-start gap-3">
+                      <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Религия</p>
+                        <p className="text-gray-900">{person.religion}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Bio */}
             {person.bio && (
@@ -249,6 +329,46 @@ export default async function PersonPage({ params }: PersonPageProps) {
                   Биография
                 </h3>
                 <p className="text-gray-700 whitespace-pre-line">{person.bio}</p>
+              </div>
+            )}
+
+            {/* Interesting facts */}
+            {person.interesting_facts && (
+              <div className="pt-6 border-t">
+                <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                  Интересные факты
+                </h3>
+                <p className="text-gray-700 whitespace-pre-line">{person.interesting_facts}</p>
+              </div>
+            )}
+
+            {/* Death information */}
+            {!person.is_alive && (person.cause_of_death || person.burial_place) && (
+              <div className="pt-6 border-t">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Информация о смерти
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {person.cause_of_death && (
+                    <div className="flex items-start gap-3">
+                      <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Причина смерти</p>
+                        <p className="text-gray-900">{person.cause_of_death}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {person.burial_place && (
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-gray-500">Место захоронения</p>
+                        <p className="text-gray-900">{person.burial_place}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
