@@ -25,6 +25,14 @@ interface Person {
   bio: string | null
   occupation: string | null
   religion: string | null
+  nickname: string | null
+  education: string | null
+  military_service: string | null
+  awards: string | null
+  hobbies: string | null
+  interesting_facts: string | null
+  cause_of_death: string | null
+  burial_place: string | null
 }
 
 interface EditPersonFormProps {
@@ -54,6 +62,14 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
   const [bio, setBio] = useState(person.bio || '')
   const [occupation, setOccupation] = useState(person.occupation || '')
   const [religion, setReligion] = useState(person.religion || '')
+  const [nickname, setNickname] = useState(person.nickname || '')
+  const [education, setEducation] = useState(person.education || '')
+  const [militaryService, setMilitaryService] = useState(person.military_service || '')
+  const [awards, setAwards] = useState(person.awards || '')
+  const [hobbies, setHobbies] = useState(person.hobbies || '')
+  const [interestingFacts, setInterestingFacts] = useState(person.interesting_facts || '')
+  const [causeOfDeath, setCauseOfDeath] = useState(person.cause_of_death || '')
+  const [burialPlace, setBurialPlace] = useState(person.burial_place || '')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,6 +98,14 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
           bio: bio || null,
           occupation: occupation || null,
           religion: religion || null,
+          nickname: nickname || null,
+          education: education || null,
+          military_service: militaryService || null,
+          awards: awards || null,
+          hobbies: hobbies || null,
+          interesting_facts: interestingFacts || null,
+          cause_of_death: causeOfDeath || null,
+          burial_place: burialPlace || null,
         })
         .eq('id', person.id)
 
@@ -268,10 +292,50 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Дополнительная информация</h3>
         <div className="space-y-4">
           <Input
+            label="Прозвище"
+            placeholder="Прозвище"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            disabled={loading}
+          />
+
+          <Input
             label="Профессия"
             placeholder="Профессия"
             value={occupation}
             onChange={(e) => setOccupation(e.target.value)}
+            disabled={loading}
+          />
+
+          <Input
+            label="Образование"
+            placeholder="Образование"
+            value={education}
+            onChange={(e) => setEducation(e.target.value)}
+            disabled={loading}
+          />
+
+          <Input
+            label="Военная служба"
+            placeholder="Военная служба"
+            value={militaryService}
+            onChange={(e) => setMilitaryService(e.target.value)}
+            disabled={loading}
+          />
+
+          <Input
+            label="Награды"
+            placeholder="Награды"
+            value={awards}
+            onChange={(e) => setAwards(e.target.value)}
+            disabled={loading}
+          />
+
+          <Input
+            label="Хобби и интересы"
+            placeholder="Хобби и интересы"
+            value={hobbies}
+            onChange={(e) => setHobbies(e.target.value)}
             disabled={loading}
           />
 
@@ -293,6 +357,37 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
               disabled={loading}
             />
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Интересные факты</label>
+            <textarea
+              className="flex min-h-[100px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Интересные факты..."
+              value={interestingFacts}
+              onChange={(e) => setInterestingFacts(e.target.value)}
+              disabled={loading}
+            />
+          </div>
+
+          {!isAlive && (
+            <>
+              <Input
+                label="Причина смерти"
+                placeholder="Причина смерти"
+                value={causeOfDeath}
+                onChange={(e) => setCauseOfDeath(e.target.value)}
+                disabled={loading}
+              />
+
+              <Input
+                label="Место захоронения"
+                placeholder="Место захоронения"
+                value={burialPlace}
+                onChange={(e) => setBurialPlace(e.target.value)}
+                disabled={loading}
+              />
+            </>
+          )}
         </div>
       </div>
 
