@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { AvatarUpload } from '@/components/person/AvatarUpload'
 
 interface Person {
   id: string
@@ -44,6 +45,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState(person.avatar_url || '')
 
   // Form fields
   const [firstName, setFirstName] = useState(person.first_name)
@@ -106,6 +108,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
           interesting_facts: interestingFacts || null,
           cause_of_death: causeOfDeath || null,
           burial_place: burialPlace || null,
+          avatar_url: avatarUrl || null,
         })
         .eq('id', person.id)
 
@@ -127,6 +130,16 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
           {error}
         </div>
       )}
+
+      {/* Avatar */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Фотография</h3>
+        <AvatarUpload
+          personId={person.id}
+          currentAvatarUrl={avatarUrl}
+          onUploadComplete={(url) => setAvatarUrl(url)}
+        />
+      </div>
 
       {/* Basic info */}
       <div>

@@ -6,11 +6,6 @@
   <component name="ChangeListManager">
     <list default="true" id="357134da-370d-4bde-8701-a0926c681ee3" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/tree/[treeId]/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/tree/[treeId]/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/tree/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/app/tree/page.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/tree/AddPersonButton.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/tree/AddPersonButton.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/tree/PersonNode.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/tree/PersonNode.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/components/tree/TreeView.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/components/tree/TreeView.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -69,7 +64,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1763994600869</updated>
-      <workItem from="1763994601913" duration="7123000" />
+      <workItem from="1763994601913" duration="10496000" />
     </task>
     <servers />
   </component>

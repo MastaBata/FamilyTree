@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { PersonContacts } from '@/components/person/PersonContacts'
 import { CustomSections } from '@/components/person/CustomSections'
+import { PhotoGallery } from '@/components/person/PhotoGallery'
 import { User, Calendar, MapPin, Heart, Users } from 'lucide-react'
 
 interface PersonPageProps {
@@ -81,6 +82,13 @@ export default async function PersonPage({ params }: PersonPageProps) {
   // Get custom sections
   const { data: customSections } = await supabase
     .from('custom_sections')
+    .select('*')
+    .eq('person_id', personId)
+    .order('sort_order', { ascending: true })
+
+  // Get photos
+  const { data: photos } = await supabase
+    .from('photos')
     .select('*')
     .eq('person_id', personId)
     .order('sort_order', { ascending: true })
@@ -401,6 +409,13 @@ export default async function PersonPage({ params }: PersonPageProps) {
               personId={personId}
               canEdit={canEdit}
               initialSections={customSections || []}
+            />
+
+            {/* Photo gallery */}
+            <PhotoGallery
+              personId={personId}
+              canEdit={canEdit}
+              initialPhotos={photos || []}
             />
 
             {/* Relations */}
