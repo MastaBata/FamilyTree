@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { LogoutButton } from '@/components/auth/LogoutButton'
+import { UserMenu } from '@/components/auth/UserMenu'
 import { CreateTreeModal } from '@/components/tree/CreateTreeModal'
 
 export default async function TreePage() {
@@ -31,13 +31,7 @@ export default async function TreePage() {
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-primary-800">FamilyTree</h1>
-          <div className="flex items-center gap-4">
-            <div className="text-sm">
-              <p className="font-medium">{profile?.full_name || 'Пользователь'}</p>
-              <p className="text-gray-600">{user.email}</p>
-            </div>
-            <LogoutButton />
-          </div>
+          <UserMenu userEmail={user.email} />
         </div>
       </header>
 

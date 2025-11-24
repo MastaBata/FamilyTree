@@ -40,13 +40,14 @@ interface Relation {
 interface TreeCanvasProps {
   persons: Person[]
   relations: Relation[]
+  treeId: string
 }
 
 const nodeTypes = {
   person: PersonNode,
 }
 
-export function TreeCanvas({ persons, relations }: TreeCanvasProps) {
+export function TreeCanvas({ persons, relations, treeId }: TreeCanvasProps) {
   // Convert persons to nodes
   const initialNodes: Node[] = useMemo(
     () =>
@@ -58,6 +59,8 @@ export function TreeCanvas({ persons, relations }: TreeCanvasProps) {
           y: person.position_y || index * 150,
         },
         data: {
+          personId: person.id,
+          treeId: treeId,
           firstName: person.first_name,
           lastName: person.last_name,
           birthDate: person.birth_date,
@@ -67,7 +70,7 @@ export function TreeCanvas({ persons, relations }: TreeCanvasProps) {
           gender: person.gender,
         },
       })),
-    [persons]
+    [persons, treeId]
   )
 
   // Convert relations to edges

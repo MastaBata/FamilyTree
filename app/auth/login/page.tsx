@@ -16,6 +16,11 @@ export default function LoginPage() {
       </CardContent>
       <CardFooter className="flex flex-col gap-4">
         <div className="text-sm text-center text-gray-600">
+          <Link href="/auth/forgot-password" className="text-primary-600 hover:text-primary-700">
+            Забыли пароль?
+          </Link>
+        </div>
+        <div className="text-sm text-center text-gray-600">
           Нет аккаунта?{' '}
           <Link href="/auth/register" className="text-primary-600 hover:text-primary-700 font-medium">
             Зарегистрируйтесь

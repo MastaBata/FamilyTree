@@ -1,9 +1,12 @@
 'use client'
 
 import { memo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Handle, Position, NodeProps } from 'reactflow'
 
 interface PersonNodeData {
+  personId: string
+  treeId: string
   firstName: string
   lastName?: string
   birthDate?: string
@@ -14,6 +17,7 @@ interface PersonNodeData {
 }
 
 function PersonNode({ data }: NodeProps<PersonNodeData>) {
+  const router = useRouter()
   const initials = data.firstName[0] + (data.lastName?.[0] || '')
   const fullName = `${data.firstName} ${data.lastName || ''}`.trim()
 
@@ -28,10 +32,18 @@ function PersonNode({ data }: NodeProps<PersonNodeData>) {
     return birthYear
   })()
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    router.push(`/tree/${data.treeId}/person/${data.personId}`)
+  }
+
   return (
     <>
       <Handle type="target" position={Position.Top} />
-      <div className="bg-white rounded-lg shadow-md p-3 border-2 border-primary-200 hover:border-primary-400 transition-colors min-w-[160px]">
+      <div
+        onClick={handleClick}
+        className="bg-white rounded-lg shadow-md p-3 border-2 border-primary-200 hover:border-primary-400 transition-colors min-w-[160px] cursor-pointer"
+      >
         <div className="flex items-center gap-2">
           {data.avatarUrl ? (
             <img

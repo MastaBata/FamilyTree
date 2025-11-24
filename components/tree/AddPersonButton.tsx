@@ -15,12 +15,20 @@ import {
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 
+interface Person {
+  id: string
+  first_name: string
+  last_name: string | null
+  middle_name: string | null
+}
+
 interface AddPersonButtonProps {
   treeId: string
   userId: string
+  persons?: Person[]
 }
 
-export function AddPersonButton({ treeId, userId }: AddPersonButtonProps) {
+export function AddPersonButton({ treeId, userId, persons = [] }: AddPersonButtonProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [firstName, setFirstName] = useState('')
@@ -33,6 +41,10 @@ export function AddPersonButton({ treeId, userId }: AddPersonButtonProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Поля для связей
+  const [relationType, setRelationType] = useState<string>('')
+  const [relatedPersonId, setRelatedPersonId] = useState<string>('')
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -41,7 +53,8 @@ export function AddPersonButton({ treeId, userId }: AddPersonButtonProps) {
     try {
       const supabase = createClient()
 
-      const { error: personError } = await supabase
+      // Добавляем человека
+      const { data: newPerson, error: personError } = await supabase
         .from('persons')
         .insert({
           tree_id: treeId,
@@ -54,8 +67,38 @@ export function AddPersonButton({ treeId, userId }: AddPersonButtonProps) {
           bio: bio || null,
           created_by: userId,
         })
+        .select()
+        .single()
 
       if (personError) throw personError
+
+      // Если выбрана связь, создаем её
+      if (relatedPersonId && relationType && newPerson) {
+        let person1Id = relatedPersonId
+        let person2Id = newPerson.id
+
+        // Для parent_child связи: person1 = родитель, person2 = ребенок
+        // Для spouse связи: порядок не важен
+        if (relationType === 'child_parent') {
+          // Если выбрано "Ребенок", то новый человек - родитель, а выбранный - ребенок
+          person1Id = newPerson.id
+          person2Id = relatedPersonId
+        }
+
+        const { error: relationError } = await supabase
+          .from('relations')
+          .insert({
+            tree_id: treeId,
+            person1_id: person1Id,
+            person2_id: person2Id,
+            relation_type: relationType === 'child_parent' ? 'parent_child' : relationType,
+          })
+
+        if (relationError) {
+          console.error('Ошибка создания связи:', relationError)
+          // Не бросаем ошибку, человек уже добавлен
+        }
+      }
 
       setOpen(false)
       resetForm()
@@ -75,6 +118,13 @@ export function AddPersonButton({ treeId, userId }: AddPersonButtonProps) {
     setBirthDate('')
     setIsAlive(true)
     setBio('')
+    setRelationType('')
+    setRelatedPersonId('')
+  }
+
+  const getPersonFullName = (person: Person) => {
+    const parts = [person.last_name, person.first_name, person.middle_name].filter(Boolean)
+    return parts.join(' ')
   }
 
   return (
@@ -95,6 +145,59 @@ export function AddPersonButton({ treeId, userId }: AddPersonButtonProps) {
             {error && (
               <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
                 {error}
+              </div>
+            )}
+
+            {/* Блок выбора связи */}
+            {persons.length > 0 && (
+              <div className="p-4 bg-primary-50 border border-primary-200 rounded-lg space-y-3">
+                <h3 className="text-sm font-semibold text-primary-900">
+                  Связь с другими людьми (необязательно)
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Тип связи
+                    </label>
+                    <select
+                      value={relationType}
+                      onChange={(e) => {
+                        setRelationType(e.target.value)
+                        if (!e.target.value) setRelatedPersonId('')
+                      }}
+                      className="flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      disabled={loading}
+                    >
+                      <option value="">Без связи</option>
+                      <option value="parent_child">Родитель для...</option>
+                      <option value="child_parent">Ребенок для...</option>
+                      <option value="spouse">Супруг(а) для...</option>
+                    </select>
+                  </div>
+
+                  {relationType && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Выбрать человека
+                      </label>
+                      <select
+                        value={relatedPersonId}
+                        onChange={(e) => setRelatedPersonId(e.target.value)}
+                        className="flex h-10 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        disabled={loading}
+                        required={!!relationType}
+                      >
+                        <option value="">Выберите...</option>
+                        {persons.map((person) => (
+                          <option key={person.id} value={person.id}>
+                            {getPersonFullName(person)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

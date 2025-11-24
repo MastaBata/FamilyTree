@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { TreeCanvas } from './TreeCanvas'
 
 interface Person {
@@ -27,9 +28,10 @@ interface Relation {
 interface TreeViewProps {
   persons: Person[]
   relations: Relation[]
+  treeId: string
 }
 
-export function TreeView({ persons, relations }: TreeViewProps) {
+export function TreeView({ persons, relations, treeId }: TreeViewProps) {
   const [viewMode, setViewMode] = useState<'list' | 'tree'>('tree')
 
   return (
@@ -63,13 +65,14 @@ export function TreeView({ persons, relations }: TreeViewProps) {
       </div>
 
       {viewMode === 'tree' ? (
-        <TreeCanvas persons={persons} relations={relations} />
+        <TreeCanvas persons={persons} relations={relations} treeId={treeId} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {persons.map((person) => (
-            <div
+            <Link
               key={person.id}
-              className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow"
+              href={`/tree/${treeId}/person/${person.id}`}
+              className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow block"
             >
               <div className="flex items-start gap-3">
                 {person.avatar_url ? (
@@ -102,7 +105,7 @@ export function TreeView({ persons, relations }: TreeViewProps) {
                   )}
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
