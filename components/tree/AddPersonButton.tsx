@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -14,12 +14,14 @@ import {
 } from '@/components/ui/Modal'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { AlertCircle } from 'lucide-react'
 
 interface Person {
   id: string
   first_name: string
   last_name: string | null
   middle_name: string | null
+  birth_date?: string | null
 }
 
 interface AddPersonButtonProps {
@@ -44,6 +46,10 @@ export function AddPersonButton({ treeId, userId, persons = [] }: AddPersonButto
   // Поля для связей
   const [relationType, setRelationType] = useState<string>('')
   const [relatedPersonId, setRelatedPersonId] = useState<string>('')
+
+  // Duplicate detection
+  const [potentialDuplicates, setPotentialDuplicates] = useState<Person[]>([])
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -120,12 +126,65 @@ export function AddPersonButton({ treeId, userId, persons = [] }: AddPersonButto
     setBio('')
     setRelationType('')
     setRelatedPersonId('')
+    setPotentialDuplicates([])
   }
 
   const getPersonFullName = (person: Person) => {
     const parts = [person.last_name, person.first_name, person.middle_name].filter(Boolean)
     return parts.join(' ')
   }
+
+  const checkForDuplicates = async () => {
+    // Only check if we have first name and last name
+    if (!firstName.trim() || !lastName.trim()) {
+      setPotentialDuplicates([])
+      return
+    }
+
+    setCheckingDuplicates(true)
+    try {
+      const supabase = createClient()
+
+      // Build query to find similar persons
+      let query = supabase
+        .from('persons')
+        .select('id, first_name, last_name, middle_name, birth_date')
+        .eq('tree_id', treeId)
+        .ilike('first_name', `%${firstName.trim()}%`)
+
+      if (lastName.trim()) {
+        query = query.ilike('last_name', `%${lastName.trim()}%`)
+      }
+
+      const { data: similarPersons } = await query.limit(5)
+
+      // If birth year is provided, filter by approximate birth year (±2 years)
+      if (birthDate && similarPersons) {
+        const birthYear = new Date(birthDate).getFullYear()
+        const filtered = similarPersons.filter(p => {
+          if (!p.birth_date) return true // Include if no birth date
+          const personYear = new Date(p.birth_date).getFullYear()
+          return Math.abs(personYear - birthYear) <= 2
+        })
+        setPotentialDuplicates(filtered || [])
+      } else {
+        setPotentialDuplicates(similarPersons || [])
+      }
+    } catch (err) {
+      console.error('Error checking duplicates:', err)
+    } finally {
+      setCheckingDuplicates(false)
+    }
+  }
+
+  // Check for duplicates when name or birth date changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      checkForDuplicates()
+    }, 500) // Debounce 500ms
+
+    return () => clearTimeout(timeoutId)
+  }, [firstName, lastName, birthDate])
 
   return (
     <Modal open={open} onOpenChange={setOpen}>
@@ -145,6 +204,31 @@ export function AddPersonButton({ treeId, userId, persons = [] }: AddPersonButto
             {error && (
               <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">
                 {error}
+              </div>
+            )}
+
+            {/* Duplicate warning */}
+            {potentialDuplicates.length > 0 && (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-yellow-900 mb-2">
+                      Возможные дубликаты найдены
+                    </h4>
+                    <p className="text-xs text-yellow-800 mb-2">
+                      Похожие люди уже есть в дереве. Убедитесь, что вы не добавляете дубликат:
+                    </p>
+                    <div className="space-y-1">
+                      {potentialDuplicates.map((dup) => (
+                        <div key={dup.id} className="text-xs text-yellow-900 bg-yellow-100 px-2 py-1 rounded">
+                          {getPersonFullName(dup)}
+                          {dup.birth_date && ` (${new Date(dup.birth_date).getFullYear()})`}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
