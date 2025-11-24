@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { UserMenu } from '@/components/auth/UserMenu'
 import { PersonContacts } from '@/components/person/PersonContacts'
+import { CustomSections } from '@/components/person/CustomSections'
 import { User, Calendar, MapPin, Heart, Users } from 'lucide-react'
 
 interface PersonPageProps {
@@ -73,6 +74,13 @@ export default async function PersonPage({ params }: PersonPageProps) {
   // Get contacts
   const { data: contacts } = await supabase
     .from('person_contacts')
+    .select('*')
+    .eq('person_id', personId)
+    .order('sort_order', { ascending: true })
+
+  // Get custom sections
+  const { data: customSections } = await supabase
+    .from('custom_sections')
     .select('*')
     .eq('person_id', personId)
     .order('sort_order', { ascending: true })
@@ -386,6 +394,13 @@ export default async function PersonPage({ params }: PersonPageProps) {
               treeId={treeId}
               canEdit={canEdit}
               initialContacts={contacts || []}
+            />
+
+            {/* Custom sections */}
+            <CustomSections
+              personId={personId}
+              canEdit={canEdit}
+              initialSections={customSections || []}
             />
 
             {/* Relations */}
