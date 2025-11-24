@@ -111,7 +111,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Имя *"
-              placeholder="Иван"
+              placeholder="Имя"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               required
@@ -120,7 +120,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
 
             <Input
               label="Фамилия"
-              placeholder="Иванов"
+              placeholder="Фамилия"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               disabled={loading}
@@ -130,7 +130,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
           <div className="grid grid-cols-2 gap-4">
             <Input
               label="Отчество"
-              placeholder="Иванович"
+              placeholder="Отчество"
               value={middleName}
               onChange={(e) => setMiddleName(e.target.value)}
               disabled={loading}
@@ -138,7 +138,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
 
             <Input
               label="Девичья фамилия"
-              placeholder="Для женщин"
+              placeholder="Девичья фамилия"
               value={maidenName}
               onChange={(e) => setMaidenName(e.target.value)}
               disabled={loading}
@@ -235,7 +235,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
         <div className="space-y-4">
           <Input
             label="Место рождения"
-            placeholder="Москва, Россия"
+            placeholder="Город, Страна"
             value={birthPlace}
             onChange={(e) => setBirthPlace(e.target.value)}
             disabled={loading}
@@ -244,7 +244,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
           {!isAlive && (
             <Input
               label="Место смерти"
-              placeholder="Москва, Россия"
+              placeholder="Город, Страна"
               value={deathPlace}
               onChange={(e) => setDeathPlace(e.target.value)}
               disabled={loading}
@@ -254,7 +254,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
           {isAlive && (
             <Input
               label="Место проживания"
-              placeholder="Санкт-Петербург, Россия"
+              placeholder="Город, Страна"
               value={currentLocation}
               onChange={(e) => setCurrentLocation(e.target.value)}
               disabled={loading}
@@ -269,7 +269,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
         <div className="space-y-4">
           <Input
             label="Профессия"
-            placeholder="Инженер"
+            placeholder="Профессия"
             value={occupation}
             onChange={(e) => setOccupation(e.target.value)}
             disabled={loading}
@@ -277,7 +277,7 @@ export function EditPersonForm({ person, treeId }: EditPersonFormProps) {
 
           <Input
             label="Религия"
-            placeholder="Православие"
+            placeholder="Религия"
             value={religion}
             onChange={(e) => setReligion(e.target.value)}
             disabled={loading}

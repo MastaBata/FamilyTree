@@ -204,7 +204,7 @@ export function AddPersonButton({ treeId, userId, persons = [] }: AddPersonButto
             <div className="grid grid-cols-2 gap-4">
               <Input
                 label="Имя *"
-                placeholder="Иван"
+                placeholder="Имя"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
@@ -213,7 +213,7 @@ export function AddPersonButton({ treeId, userId, persons = [] }: AddPersonButto
 
               <Input
                 label="Фамилия"
-                placeholder="Иванов"
+                placeholder="Фамилия"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 disabled={loading}
@@ -222,7 +222,7 @@ export function AddPersonButton({ treeId, userId, persons = [] }: AddPersonButto
 
             <Input
               label="Отчество"
-              placeholder="Иванович"
+              placeholder="Отчество"
               value={middleName}
               onChange={(e) => setMiddleName(e.target.value)}
               disabled={loading}
