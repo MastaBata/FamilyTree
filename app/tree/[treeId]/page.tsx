@@ -5,6 +5,7 @@ import { UserMenu } from '@/components/auth/UserMenu'
 import { AddPersonButton } from '@/components/tree/AddPersonButton'
 import { TreeView } from '@/components/tree/TreeView'
 import { ShareModal } from '@/components/tree/ShareModal'
+import { ExportButton } from '@/components/tree/ExportButton'
 
 interface TreePageProps {
   params: Promise<{
@@ -80,6 +81,7 @@ export default async function TreeDetailPage({ params }: TreePageProps) {
               )}
             </div>
             <div className="flex gap-2">
+              <ExportButton treeId={treeId} />
               <ShareModal treeId={treeId} userId={user.id} shareCode={tree.share_code} />
               {canEdit && <AddPersonButton treeId={treeId} userId={user.id} persons={persons || []} />}
             </div>
