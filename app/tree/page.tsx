@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { LogoutButton } from '@/components/auth/LogoutButton'
+import { CreateTreeModal } from '@/components/tree/CreateTreeModal'
 
 export default async function TreePage() {
   const supabase = await createClient()
@@ -40,16 +42,20 @@ export default async function TreePage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Мои деревья</h2>
-          <p className="text-gray-600">Создайте или выберите дерево для работы</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Мои деревья</h2>
+            <p className="text-gray-600">Создайте или выберите дерево для работы</p>
+          </div>
+          {trees && trees.length > 0 && <CreateTreeModal userId={user.id} />}
         </div>
 
         {trees && trees.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {trees.map((tree) => (
-              <div
+              <Link
                 key={tree.id}
+                href={`/tree/${tree.id}`}
                 className="bg-white rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow cursor-pointer"
               >
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -61,7 +67,7 @@ export default async function TreePage() {
                 <div className="mt-4 text-xs text-gray-500">
                   Создано: {new Date(tree.created_at).toLocaleDateString('ru-RU')}
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         ) : (
@@ -73,9 +79,7 @@ export default async function TreePage() {
             <p className="text-gray-600 mb-6">
               Создайте первое семейное дерево, чтобы начать
             </p>
-            <button className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-semibold">
-              Создать дерево
-            </button>
+            <CreateTreeModal userId={user.id} />
           </div>
         )}
       </main>
