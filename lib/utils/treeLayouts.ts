@@ -1,9 +1,16 @@
 /**
- * Tree layout algorithms for different visualization styles
+ * Classic Family Tree Layout
+ *
+ * Rules:
+ * 1. Generations are arranged top to bottom (oldest at top)
+ * 2. Spouses are placed next to each other
+ * 3. Children are centered below their parents
  */
 
 interface Person {
   id: string
+  first_name: string
+  last_name: string | null
   position_x: number
   position_y: number
 }
@@ -20,349 +27,256 @@ interface LayoutPosition {
   y: number
 }
 
-const HORIZONTAL_SPACING = 250
-const VERTICAL_SPACING = 180
-const RADIAL_RADIUS = 150
+// Calculate node width based on name (same logic as PersonNode)
+function calculateNodeWidth(firstName: string, lastName?: string | null): number {
+  const fullName = `${firstName} ${lastName || ''}`.trim()
+  const textWidth = fullName.length * 8
+  const minWidth = 150
+  const maxWidth = 300
+  return Math.min(maxWidth, Math.max(minWidth, 88 + textWidth))
+}
 
-/**
- * Build graph structure
- */
-function buildGraph(persons: Person[], relations: Relation[]) {
-  const graph = new Map<string, Set<string>>()
-  const children = new Map<string, Set<string>>()
-  const parents = new Map<string, Set<string>>()
+const DEFAULT_NODE_WIDTH = 180
+const HORIZONTAL_GAP = 100
+const VERTICAL_SPACING = 220
+const SPOUSE_GAP = 60  // Fixed gap between spouse nodes
 
-  persons.forEach((p) => {
-    graph.set(p.id, new Set())
+export function classicTreeLayout(persons: Person[], relations: Relation[]): LayoutPosition[] {
+  if (persons.length === 0) return []
+
+  // Build person map for quick lookup
+  const personMap = new Map<string, Person>()
+  persons.forEach(p => personMap.set(p.id, p))
+
+  // Get node width for a person
+  function getNodeWidth(personId: string): number {
+    const person = personMap.get(personId)
+    if (!person) return DEFAULT_NODE_WIDTH
+    return calculateNodeWidth(person.first_name, person.last_name)
+  }
+
+  // Build relationship maps
+  const children = new Map<string, Set<string>>() // parent -> children
+  const parents = new Map<string, Set<string>>()  // child -> parents
+  const spouses = new Map<string, Set<string>>()  // person -> spouses
+
+  persons.forEach(p => {
     children.set(p.id, new Set())
     parents.set(p.id, new Set())
+    spouses.set(p.id, new Set())
   })
 
-  relations.forEach((rel) => {
-    if (rel.relation_type === 'parent_child') {
-      // person1 is parent, person2 is child
-      children.get(rel.person1_id)?.add(rel.person2_id)
-      parents.get(rel.person2_id)?.add(rel.person1_id)
-      graph.get(rel.person1_id)?.add(rel.person2_id)
+  relations.forEach(r => {
+    if (r.relation_type === 'parent_child') {
+      children.get(r.person1_id)?.add(r.person2_id)
+      parents.get(r.person2_id)?.add(r.person1_id)
+    } else if (r.relation_type === 'spouse' || r.relation_type === 'ex_spouse') {
+      spouses.get(r.person1_id)?.add(r.person2_id)
+      spouses.get(r.person2_id)?.add(r.person1_id)
     }
   })
 
-  return { graph, children, parents }
-}
+  // Assign generations
+  const generations = new Map<string, number>()
 
-/**
- * Find root nodes (people without parents)
- */
-function findRoots(persons: Person[], parents: Map<string, Set<string>>): string[] {
-  return persons.filter((p) => parents.get(p.id)?.size === 0).map((p) => p.id)
-}
+  // Find TRUE roots - people who have no parents AND whose spouse also has no parents
+  // If someone has no parents but their spouse does, they are NOT a root
+  function isRoot(personId: string): boolean {
+    if ((parents.get(personId)?.size || 0) > 0) return false
 
-/**
- * Vertical Tree Layout (traditional family tree)
- */
-export function verticalTreeLayout(persons: Person[], relations: Relation[]): LayoutPosition[] {
-  const { children, parents } = buildGraph(persons, relations)
-  const roots = findRoots(persons, parents)
-  const positions: LayoutPosition[] = []
+    // Check if any spouse has parents - if so, this person is not a root
+    const personSpouses = spouses.get(personId) || new Set()
+    for (const spouseId of personSpouses) {
+      if ((parents.get(spouseId)?.size || 0) > 0) return false
+    }
+
+    return true
+  }
+
+  const roots = persons.filter(p => isRoot(p.id))
+
+  // BFS to assign generations - start from roots, go down
+  const queue: { id: string; gen: number }[] = []
   const visited = new Set<string>()
 
-  // Level-based positioning
-  const levels = new Map<string, number>()
+  // Initialize queue with roots
+  roots.forEach(root => {
+    queue.push({ id: root.id, gen: 0 })
+  })
 
-  function assignLevels(personId: string, level: number) {
-    if (visited.has(personId)) return
-    visited.add(personId)
-    levels.set(personId, level)
+  while (queue.length > 0) {
+    const { id, gen } = queue.shift()!
 
-    const personChildren = children.get(personId) || new Set()
-    personChildren.forEach((childId) => {
-      assignLevels(childId, level + 1)
+    if (visited.has(id)) continue
+    visited.add(id)
+    generations.set(id, gen)
+
+    // Spouse gets same generation
+    spouses.get(id)?.forEach(spouseId => {
+      if (!visited.has(spouseId)) {
+        visited.add(spouseId)
+        generations.set(spouseId, gen)
+      }
+    })
+
+    // Children get next generation
+    children.get(id)?.forEach(childId => {
+      if (!visited.has(childId)) {
+        queue.push({ id: childId, gen: gen + 1 })
+      }
     })
   }
 
-  // Assign levels starting from roots
-  roots.forEach((rootId) => assignLevels(rootId, 0))
-
-  // Position remaining nodes
-  persons.forEach((p) => {
-    if (!visited.has(p.id)) {
-      levels.set(p.id, 0)
+  // Handle disconnected persons - put them at generation 0
+  persons.forEach(p => {
+    if (!generations.has(p.id)) {
+      generations.set(p.id, 0)
     }
   })
 
-  // Group by level
-  const levelGroups = new Map<number, string[]>()
-  levels.forEach((level, personId) => {
-    if (!levelGroups.has(level)) {
-      levelGroups.set(level, [])
+  // Get all children of a couple
+  function getChildrenOf(personId: string): string[] {
+    const result = new Set<string>()
+    children.get(personId)?.forEach(c => result.add(c))
+    spouses.get(personId)?.forEach(spouseId => {
+      children.get(spouseId)?.forEach(c => result.add(c))
+    })
+    return Array.from(result)
+  }
+
+  // Calculate subtree widths
+  const subtreeWidths = new Map<string, number>()
+  const calculated = new Set<string>()
+
+  function calcSubtreeWidth(personId: string): number {
+    if (subtreeWidths.has(personId)) return subtreeWidths.get(personId)!
+    if (calculated.has(personId)) return getNodeWidth(personId) // Prevent infinite recursion
+
+    calculated.add(personId)
+    const personChildren = getChildrenOf(personId)
+    const myWidth = getNodeWidth(personId)
+
+    if (personChildren.length === 0) {
+      const spouseList = Array.from(spouses.get(personId) || new Set())
+      if (spouseList.length > 0) {
+        const spouseWidth = getNodeWidth(spouseList[0])
+        const width = myWidth + SPOUSE_GAP + spouseWidth
+        subtreeWidths.set(personId, width)
+        return width
+      }
+      subtreeWidths.set(personId, myWidth)
+      return myWidth
     }
-    levelGroups.get(level)!.push(personId)
-  })
+
+    let totalChildWidth = 0
+    personChildren.forEach((childId, idx) => {
+      totalChildWidth += calcSubtreeWidth(childId)
+      if (idx < personChildren.length - 1) {
+        totalChildWidth += HORIZONTAL_GAP
+      }
+    })
+
+    const spouseList = Array.from(spouses.get(personId) || new Set())
+    let parentsWidth = myWidth
+    if (spouseList.length > 0) {
+      const spouseWidth = getNodeWidth(spouseList[0])
+      parentsWidth = myWidth + SPOUSE_GAP + spouseWidth
+    }
+    const width = Math.max(totalChildWidth, parentsWidth)
+
+    subtreeWidths.set(personId, width)
+    return width
+  }
+
+  // Calculate widths for all roots
+  roots.forEach(root => calcSubtreeWidth(root.id))
 
   // Position nodes
-  levelGroups.forEach((personIds, level) => {
-    const levelWidth = personIds.length * HORIZONTAL_SPACING
-    const startX = -levelWidth / 2
+  const positions = new Map<string, { x: number; y: number }>()
 
-    personIds.forEach((personId, index) => {
-      positions.push({
-        id: personId,
-        x: startX + index * HORIZONTAL_SPACING,
-        y: level * VERTICAL_SPACING,
-      })
+  function positionFamily(personId: string, centerX: number, gen: number) {
+    if (positions.has(personId)) return
+
+    const y = gen * VERTICAL_SPACING
+    const spouseSet = spouses.get(personId) || new Set()
+    const spouseList = Array.from(spouseSet).filter(s => !positions.has(s))
+    const myWidth = getNodeWidth(personId)
+
+    // Position person and spouse
+    if (spouseList.length > 0) {
+      const spouseWidth = getNodeWidth(spouseList[0])
+      const coupleWidth = myWidth + SPOUSE_GAP + spouseWidth
+      positions.set(personId, { x: centerX - coupleWidth / 2 + myWidth / 2, y })
+      positions.set(spouseList[0], { x: centerX + coupleWidth / 2 - spouseWidth / 2, y })
+    } else {
+      positions.set(personId, { x: centerX, y })
+    }
+
+    // Position children
+    const personChildren = getChildrenOf(personId)
+    if (personChildren.length === 0) return
+
+    let totalChildWidth = 0
+    personChildren.forEach((childId, idx) => {
+      totalChildWidth += subtreeWidths.get(childId) || getNodeWidth(childId)
+      if (idx < personChildren.length - 1) {
+        totalChildWidth += HORIZONTAL_GAP
+      }
     })
-  })
 
-  return positions
-}
+    let currentX = centerX - totalChildWidth / 2
 
-/**
- * Horizontal Tree Layout (left to right)
- */
-export function horizontalTreeLayout(persons: Person[], relations: Relation[]): LayoutPosition[] {
-  const { children, parents } = buildGraph(persons, relations)
-  const roots = findRoots(persons, parents)
-  const positions: LayoutPosition[] = []
-  const visited = new Set<string>()
-  const levels = new Map<string, number>()
-
-  function assignLevels(personId: string, level: number) {
-    if (visited.has(personId)) return
-    visited.add(personId)
-    levels.set(personId, level)
-
-    const personChildren = children.get(personId) || new Set()
-    personChildren.forEach((childId) => {
-      assignLevels(childId, level + 1)
+    personChildren.forEach(childId => {
+      const childWidth = subtreeWidths.get(childId) || getNodeWidth(childId)
+      const childCenterX = currentX + childWidth / 2
+      const childGen = generations.get(childId) || gen + 1
+      positionFamily(childId, childCenterX, childGen)
+      currentX += childWidth + HORIZONTAL_GAP
     })
   }
 
-  roots.forEach((rootId) => assignLevels(rootId, 0))
-
-  persons.forEach((p) => {
-    if (!visited.has(p.id)) {
-      levels.set(p.id, 0)
+  // Position all root families
+  let currentX = 0
+  roots.forEach(root => {
+    if (!positions.has(root.id)) {
+      const width = subtreeWidths.get(root.id) || NODE_WIDTH
+      positionFamily(root.id, currentX + width / 2, 0)
+      currentX += width + HORIZONTAL_GAP * 2
     }
   })
 
-  // Group by level
-  const levelGroups = new Map<number, string[]>()
-  levels.forEach((level, personId) => {
-    if (!levelGroups.has(level)) {
-      levelGroups.set(level, [])
-    }
-    levelGroups.get(level)!.push(personId)
-  })
-
-  // Position nodes (swap X and Y from vertical)
-  levelGroups.forEach((personIds, level) => {
-    const levelHeight = personIds.length * VERTICAL_SPACING
-    const startY = -levelHeight / 2
-
-    personIds.forEach((personId, index) => {
-      positions.push({
-        id: personId,
-        x: level * HORIZONTAL_SPACING,
-        y: startY + index * VERTICAL_SPACING,
-      })
-    })
-  })
-
-  return positions
-}
-
-/**
- * Radial/Circular Tree Layout
- */
-export function radialTreeLayout(persons: Person[], relations: Relation[]): LayoutPosition[] {
-  const { children, parents } = buildGraph(persons, relations)
-  const roots = findRoots(persons, parents)
-  const positions: LayoutPosition[] = []
-  const visited = new Set<string>()
-  const levels = new Map<string, number>()
-
-  function assignLevels(personId: string, level: number) {
-    if (visited.has(personId)) return
-    visited.add(personId)
-    levels.set(personId, level)
-
-    const personChildren = children.get(personId) || new Set()
-    personChildren.forEach((childId) => {
-      assignLevels(childId, level + 1)
-    })
-  }
-
-  roots.forEach((rootId) => assignLevels(rootId, 0))
-
-  persons.forEach((p) => {
-    if (!visited.has(p.id)) {
-      levels.set(p.id, 0)
+  // Handle unpositioned persons
+  persons.forEach(p => {
+    if (!positions.has(p.id)) {
+      const gen = generations.get(p.id) || 0
+      positions.set(p.id, { x: currentX, y: gen * VERTICAL_SPACING })
+      currentX += getNodeWidth(p.id) + HORIZONTAL_GAP
     }
   })
 
-  // Group by level
-  const levelGroups = new Map<number, string[]>()
-  levels.forEach((level, personId) => {
-    if (!levelGroups.has(level)) {
-      levelGroups.set(level, [])
-    }
-    levelGroups.get(level)!.push(personId)
+  // Center the tree
+  let minX = Infinity, maxX = -Infinity
+  positions.forEach(pos => {
+    minX = Math.min(minX, pos.x)
+    maxX = Math.max(maxX, pos.x)
+  })
+  const offsetX = -(minX + maxX) / 2
+
+  // Convert to result
+  const result: LayoutPosition[] = []
+  positions.forEach((pos, id) => {
+    result.push({ id, x: pos.x + offsetX, y: pos.y })
   })
 
-  // Position nodes in concentric circles
-  levelGroups.forEach((personIds, level) => {
-    const radius = level * RADIAL_RADIUS
-    const angleStep = (2 * Math.PI) / Math.max(personIds.length, 1)
-
-    personIds.forEach((personId, index) => {
-      const angle = index * angleStep - Math.PI / 2 // Start from top
-
-      positions.push({
-        id: personId,
-        x: radius * Math.cos(angle),
-        y: radius * Math.sin(angle),
-      })
-    })
-  })
-
-  return positions
+  return result
 }
 
-/**
- * Compact Layout (grid-based)
- */
-export function compactGridLayout(persons: Person[], relations: Relation[]): LayoutPosition[] {
-  const positions: LayoutPosition[] = []
-  const cols = Math.ceil(Math.sqrt(persons.length))
+export type LayoutType = 'classic' | 'vertical' | 'horizontal' | 'radial' | 'compact' | 'force'
 
-  persons.forEach((person, index) => {
-    const row = Math.floor(index / cols)
-    const col = index % cols
-
-    positions.push({
-      id: person.id,
-      x: col * HORIZONTAL_SPACING,
-      y: row * VERTICAL_SPACING,
-    })
-  })
-
-  return positions
-}
-
-/**
- * Force-directed Layout (physics-based)
- */
-export function forceDirectedLayout(persons: Person[], relations: Relation[]): LayoutPosition[] {
-  // Simple force-directed algorithm
-  const positions: LayoutPosition[] = []
-  const nodePositions = new Map<string, { x: number; y: number }>()
-
-  // Initialize with random positions
-  persons.forEach((person) => {
-    nodePositions.set(person.id, {
-      x: Math.random() * 1000 - 500,
-      y: Math.random() * 1000 - 500,
-    })
-  })
-
-  // Simulate forces
-  const iterations = 50
-  const repulsionForce = 10000
-  const attractionForce = 0.01
-  const damping = 0.9
-
-  for (let iter = 0; iter < iterations; iter++) {
-    const forces = new Map<string, { x: number; y: number }>()
-
-    // Initialize forces
-    persons.forEach((p) => {
-      forces.set(p.id, { x: 0, y: 0 })
-    })
-
-    // Repulsion between all nodes
-    persons.forEach((p1) => {
-      persons.forEach((p2) => {
-        if (p1.id === p2.id) return
-
-        const pos1 = nodePositions.get(p1.id)!
-        const pos2 = nodePositions.get(p2.id)!
-
-        const dx = pos1.x - pos2.x
-        const dy = pos1.y - pos2.y
-        const distance = Math.sqrt(dx * dx + dy * dy) || 1
-
-        const force = repulsionForce / (distance * distance)
-        const fx = (dx / distance) * force
-        const fy = (dy / distance) * force
-
-        const f1 = forces.get(p1.id)!
-        f1.x += fx
-        f1.y += fy
-      })
-    })
-
-    // Attraction along edges
-    relations.forEach((rel) => {
-      const pos1 = nodePositions.get(rel.person1_id)
-      const pos2 = nodePositions.get(rel.person2_id)
-
-      if (!pos1 || !pos2) return
-
-      const dx = pos2.x - pos1.x
-      const dy = pos2.y - pos1.y
-      const distance = Math.sqrt(dx * dx + dy * dy) || 1
-
-      const force = distance * attractionForce
-      const fx = (dx / distance) * force
-      const fy = (dy / distance) * force
-
-      const f1 = forces.get(rel.person1_id)!
-      const f2 = forces.get(rel.person2_id)!
-
-      f1.x += fx
-      f1.y += fy
-      f2.x -= fx
-      f2.y -= fy
-    })
-
-    // Apply forces
-    persons.forEach((p) => {
-      const pos = nodePositions.get(p.id)!
-      const force = forces.get(p.id)!
-
-      pos.x += force.x * damping
-      pos.y += force.y * damping
-    })
-  }
-
-  // Convert to positions array
-  nodePositions.forEach((pos, id) => {
-    positions.push({ id, x: pos.x, y: pos.y })
-  })
-
-  return positions
-}
-
-/**
- * Apply layout to persons
- */
 export function applyLayout(
   persons: Person[],
   relations: Relation[],
-  layoutType: 'vertical' | 'horizontal' | 'radial' | 'compact' | 'force'
+  layoutType: LayoutType
 ): LayoutPosition[] {
-  switch (layoutType) {
-    case 'vertical':
-      return verticalTreeLayout(persons, relations)
-    case 'horizontal':
-      return horizontalTreeLayout(persons, relations)
-    case 'radial':
-      return radialTreeLayout(persons, relations)
-    case 'compact':
-      return compactGridLayout(persons, relations)
-    case 'force':
-      return forceDirectedLayout(persons, relations)
-    default:
-      return verticalTreeLayout(persons, relations)
-  }
+  return classicTreeLayout(persons, relations)
 }

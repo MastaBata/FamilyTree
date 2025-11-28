@@ -24,9 +24,14 @@ export function ShareModal({ treeId, userId, shareCode: initialShareCode }: Shar
   const [shareCode, setShareCode] = useState(initialShareCode)
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [origin, setOrigin] = useState('')
 
-  const shareUrl = shareCode
-    ? `${window.location.origin}/invite/${shareCode}`
+  useEffect(() => {
+    setOrigin(window.location.origin)
+  }, [])
+
+  const shareUrl = shareCode && origin
+    ? `${origin}/invite/${shareCode}`
     : ''
 
   useEffect(() => {

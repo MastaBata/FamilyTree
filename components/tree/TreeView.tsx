@@ -8,6 +8,7 @@ interface Person {
   id: string
   first_name: string
   last_name: string | null
+  middle_name?: string | null
   birth_date: string | null
   death_date: string | null
   is_alive: boolean
@@ -23,15 +24,19 @@ interface Relation {
   person1_id: string
   person2_id: string
   relation_type: string
+  marriage_date?: string | null
+  divorce_date?: string | null
 }
 
 interface TreeViewProps {
   persons: Person[]
   relations: Relation[]
   treeId: string
+  userRole?: 'owner' | 'editor' | 'viewer' | null
+  linkedPersonId?: string | null
 }
 
-export function TreeView({ persons, relations, treeId }: TreeViewProps) {
+export function TreeView({ persons, relations, treeId, userRole, linkedPersonId }: TreeViewProps) {
   const [viewMode, setViewMode] = useState<'list' | 'tree'>('tree')
 
   return (
@@ -49,7 +54,7 @@ export function TreeView({ persons, relations, treeId }: TreeViewProps) {
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            🌳 Дерево
+            Дерево
           </button>
           <button
             onClick={() => setViewMode('list')}
@@ -59,13 +64,19 @@ export function TreeView({ persons, relations, treeId }: TreeViewProps) {
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            📋 Список
+            Список
           </button>
         </div>
       </div>
 
       {viewMode === 'tree' ? (
-        <TreeCanvas persons={persons} relations={relations} treeId={treeId} />
+        <TreeCanvas
+          persons={persons}
+          relations={relations}
+          treeId={treeId}
+          userRole={userRole}
+          linkedPersonId={linkedPersonId}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {persons.map((person) => (

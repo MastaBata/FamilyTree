@@ -12,19 +12,19 @@ import ReactFlow, {
   addEdge,
   Connection,
   MiniMap,
-  NodeDragHandler,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import { Save, Grid3X3, GitBranch, Circle, Maximize, Workflow } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
 import { applyLayout } from '@/lib/utils/treeLayouts'
 
-import PersonNode from './PersonNode'
+import PersonNode, { calculateNodeWidth, RelationType } from './PersonNode'
+import { SpouseEdge, ParentChildEdge, SiblingEdge } from './FamilyEdge'
+import { AddRelativeModal } from './AddRelativeModal'
 
 interface Person {
   id: string
   first_name: string
   last_name: string | null
+  middle_name?: string | null
   birth_date: string | null
   death_date: string | null
   is_alive: boolean
@@ -39,63 +39,83 @@ interface Relation {
   person1_id: string
   person2_id: string
   relation_type: string
+  marriage_date?: string | null
+  divorce_date?: string | null
 }
 
 interface TreeCanvasProps {
   persons: Person[]
   relations: Relation[]
   treeId: string
+  userRole?: 'owner' | 'editor' | 'viewer' | null
+  linkedPersonId?: string | null
 }
-
-type LayoutType = 'vertical' | 'horizontal' | 'radial' | 'compact' | 'force'
 
 const nodeTypes = {
   person: PersonNode,
 }
 
-const LAYOUT_OPTIONS: Array<{ value: LayoutType; label: string; icon: any }> = [
-  { value: 'vertical', label: 'Вертикальное', icon: GitBranch },
-  { value: 'horizontal', label: 'Горизонтальное', icon: Workflow },
-  { value: 'radial', label: 'Круговое', icon: Circle },
-  { value: 'compact', label: 'Сетка', icon: Grid3X3 },
-  { value: 'force', label: 'Физическое', icon: Maximize },
-]
+const edgeTypes = {
+  spouse: SpouseEdge,
+  parent_child: ParentChildEdge,
+  sibling: SiblingEdge,
+}
 
-export function TreeCanvas({ persons, relations, treeId }: TreeCanvasProps) {
-  const [layoutType, setLayoutType] = useState<LayoutType>('vertical')
-  const [saving, setSaving] = useState(false)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+export function TreeCanvas({ persons, relations, treeId, userRole, linkedPersonId }: TreeCanvasProps) {
 
-  // Load saved layout preference
-  useEffect(() => {
-    const savedLayout = localStorage.getItem(`tree-layout-${treeId}`)
-    if (savedLayout && LAYOUT_OPTIONS.find((o) => o.value === savedLayout)) {
-      setLayoutType(savedLayout as LayoutType)
+  // Modal state for adding relatives
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
+  const [selectedRelationType, setSelectedRelationType] = useState<RelationType | null>(null)
+
+  // Check if user can edit
+  const canEdit = userRole === 'owner' || userRole === 'editor'
+
+  // Handle adding a relative
+  const handleAddRelative = useCallback((personId: string, relationType: RelationType) => {
+    const person = persons.find(p => p.id === personId)
+    if (person) {
+      setSelectedPerson(person)
+      setSelectedRelationType(relationType)
+      setAddModalOpen(true)
     }
-  }, [treeId])
+  }, [persons])
 
-  // Calculate initial positions based on layout
-  const getInitialPositions = useCallback(
-    (layout: LayoutType) => {
-      const hasPositions = persons.some((p) => p.position_x !== 0 || p.position_y !== 0)
+  // Calculate positions - always use classic layout
+  const getPositions = useCallback(() => {
+    // Always recalculate positions using classic layout
+    return applyLayout(persons, relations, 'classic')
+  }, [persons, relations])
 
-      // If persons have saved positions and we're using the same layout, use them
-      if (hasPositions) {
-        return persons.map((p) => ({ id: p.id, x: p.position_x, y: p.position_y }))
-      }
+  // Helper: find spouse of a person
+  const findSpouse = useCallback((personId: string): string | undefined => {
+    const spouseRelation = relations.find(
+      r => (r.relation_type === 'spouse' || r.relation_type === 'ex_spouse') &&
+           (r.person1_id === personId || r.person2_id === personId)
+    )
+    if (!spouseRelation) return undefined
+    return spouseRelation.person1_id === personId ? spouseRelation.person2_id : spouseRelation.person1_id
+  }, [relations])
 
-      // Otherwise, calculate new positions
-      return applyLayout(persons, relations, layout)
-    },
-    [persons, relations]
-  )
+  // Helper: check if a couple has children
+  const coupleHasChildren = useCallback((person1Id: string, person2Id: string): boolean => {
+    const childRelations = relations.filter(r => r.relation_type === 'parent_child')
+    const children1 = new Set(childRelations.filter(r => r.person1_id === person1Id).map(r => r.person2_id))
+    const children2 = new Set(childRelations.filter(r => r.person1_id === person2Id).map(r => r.person2_id))
+
+    for (const childId of children1) {
+      if (children2.has(childId)) return true
+    }
+    return false
+  }, [relations])
 
   // Convert persons to nodes
   const initialNodes: Node[] = useMemo(() => {
-    const positions = getInitialPositions(layoutType)
+    const positions = getPositions()
 
     return persons.map((person) => {
       const pos = positions.find((p) => p.id === person.id)
+      const nodeWidth = calculateNodeWidth(person.first_name, person.last_name || undefined)
 
       return {
         id: person.id,
@@ -114,163 +134,100 @@ export function TreeCanvas({ persons, relations, treeId }: TreeCanvasProps) {
           isAlive: person.is_alive,
           avatarUrl: person.avatar_url,
           gender: person.gender,
+          nodeWidth: nodeWidth,
+          onAddRelative: canEdit ? handleAddRelative : undefined,
         },
       }
     })
-  }, [persons, treeId, layoutType, getInitialPositions])
+  }, [persons, treeId, getPositions, canEdit, handleAddRelative])
 
-  // Convert relations to edges
-  const initialEdges: Edge[] = useMemo(
-    () =>
-      relations.map((relation) => ({
+  // Convert relations to edges with custom types
+  const initialEdges: Edge[] = useMemo(() => {
+    const parentChildEdges: Edge[] = []
+    const spouseEdges: Edge[] = []
+    const siblingEdges: Edge[] = []
+    const otherEdges: Edge[] = []
+    const processedChildren = new Set<string>() // Track children we've already drawn edges to
+
+    relations.forEach((relation) => {
+      const baseEdge = {
         id: relation.id,
         source: relation.person1_id,
         target: relation.person2_id,
-        type: relation.relation_type === 'spouse' ? 'straight' : 'smoothstep',
-        animated: relation.relation_type === 'spouse',
-        style: {
-          stroke: relation.relation_type === 'spouse' ? '#ec4899' : '#2196F3',
-          strokeWidth: 2,
-        },
-        label: relation.relation_type === 'spouse' ? '💑' : undefined,
-      })),
-    [relations]
-  )
+      }
+
+      if (relation.relation_type === 'spouse' || relation.relation_type === 'ex_spouse') {
+        const hasChildren = coupleHasChildren(relation.person1_id, relation.person2_id)
+        spouseEdges.push({
+          ...baseEdge,
+          type: 'spouse',
+          data: {
+            hasChildren,
+            isDivorced: relation.relation_type === 'ex_spouse',
+          },
+        })
+      } else if (relation.relation_type === 'parent_child') {
+        const childId = relation.person2_id
+        const parentId = relation.person1_id
+        const spouseId = findSpouse(parentId)
+
+        // Only draw one edge per child (avoid duplicates from both parents)
+        // Use a key combining child + both parents to track
+        const parentPairKey = spouseId
+          ? [parentId, spouseId].sort().join('-') + '-' + childId
+          : parentId + '-' + childId
+
+        if (!processedChildren.has(parentPairKey)) {
+          processedChildren.add(parentPairKey)
+          parentChildEdges.push({
+            ...baseEdge,
+            type: 'parent_child',
+            data: {
+              spouseId,
+            },
+          })
+        }
+      } else if (relation.relation_type === 'sibling') {
+        siblingEdges.push({
+          ...baseEdge,
+          type: 'sibling',
+        })
+      } else {
+        otherEdges.push({
+          ...baseEdge,
+          type: 'smoothstep',
+          style: {
+            stroke: '#94a3b8',
+            strokeWidth: 2,
+          },
+        })
+      }
+    })
+
+    // Order: parent-child first, then sibling, then spouse (spouse on top so hearts are visible)
+    return [...parentChildEdges, ...siblingEdges, ...otherEdges, ...spouseEdges]
+  }, [relations, findSpouse, coupleHasChildren])
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
 
-  // Update nodes when layout changes
+  // Update nodes when persons/relations change
   useEffect(() => {
     setNodes(initialNodes)
   }, [initialNodes, setNodes])
+
+  // Update edges when relations change
+  useEffect(() => {
+    setEdges(initialEdges)
+  }, [initialEdges, setEdges])
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   )
 
-  // Save positions to database
-  const savePositions = async () => {
-    setSaving(true)
-    setSaveStatus('saving')
-
-    try {
-      const positions = nodes.map((node) => ({
-        id: node.id,
-        x: node.position.x,
-        y: node.position.y,
-      }))
-
-      const response = await fetch(`/api/tree/${treeId}/save-positions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ positions }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to save positions')
-      }
-
-      setSaveStatus('saved')
-      setTimeout(() => setSaveStatus('idle'), 2000)
-    } catch (error) {
-      console.error('Error saving positions:', error)
-      setSaveStatus('error')
-      setTimeout(() => setSaveStatus('idle'), 3000)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  // Auto-save on drag end
-  const onNodeDragStop: NodeDragHandler = useCallback(() => {
-    // Debounce auto-save
-    const timeoutId = setTimeout(() => {
-      savePositions()
-    }, 1000)
-
-    return () => clearTimeout(timeoutId)
-  }, [nodes])
-
-  // Handle layout change
-  const handleLayoutChange = (newLayout: LayoutType) => {
-    setLayoutType(newLayout)
-    localStorage.setItem(`tree-layout-${treeId}`, newLayout)
-
-    // Apply new layout
-    const newPositions = applyLayout(persons, relations, newLayout)
-    const updatedNodes = nodes.map((node) => {
-      const pos = newPositions.find((p) => p.id === node.id)
-      return {
-        ...node,
-        position: {
-          x: pos?.x || node.position.x,
-          y: pos?.y || node.position.y,
-        },
-      }
-    })
-
-    setNodes(updatedNodes)
-
-    // Auto-save new layout
-    setTimeout(() => {
-      savePositions()
-    }, 500)
-  }
-
   return (
     <div className="relative w-full h-[calc(100vh-200px)] bg-gray-50 rounded-xl border border-gray-200">
-      {/* Layout Selector */}
-      <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg border border-gray-200 p-2">
-        <div className="text-xs font-semibold text-gray-600 mb-2 px-2">Вид дерева</div>
-        <div className="flex flex-col gap-1">
-          {LAYOUT_OPTIONS.map((option) => {
-            const Icon = option.icon
-            return (
-              <button
-                key={option.value}
-                onClick={() => handleLayoutChange(option.value)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  layoutType === option.value
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Save Button */}
-      <div className="absolute top-4 right-4 z-10">
-        <Button
-          onClick={savePositions}
-          disabled={saving}
-          size="sm"
-          className={`${
-            saveStatus === 'saved'
-              ? 'bg-green-600 hover:bg-green-700'
-              : saveStatus === 'error'
-              ? 'bg-red-600 hover:bg-red-700'
-              : ''
-          }`}
-        >
-          <Save className="w-4 h-4 mr-2" />
-          {saveStatus === 'saving'
-            ? 'Сохранение...'
-            : saveStatus === 'saved'
-            ? 'Сохранено!'
-            : saveStatus === 'error'
-            ? 'Ошибка'
-            : 'Сохранить позиции'}
-        </Button>
-      </div>
 
       <ReactFlow
         nodes={nodes}
@@ -278,12 +235,13 @@ export function TreeCanvas({ persons, relations, treeId }: TreeCanvasProps) {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeDragStop={onNodeDragStop}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         minZoom={0.1}
         maxZoom={2}
         defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+        nodesDraggable={false}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
         <Controls />
@@ -297,6 +255,17 @@ export function TreeCanvas({ persons, relations, treeId }: TreeCanvasProps) {
           maskColor="rgba(0, 0, 0, 0.1)"
         />
       </ReactFlow>
+
+      {/* Add Relative Modal */}
+      <AddRelativeModal
+        open={addModalOpen}
+        onOpenChange={setAddModalOpen}
+        treeId={treeId}
+        relatedPerson={selectedPerson}
+        relationType={selectedRelationType}
+        persons={persons}
+        relations={relations}
+      />
     </div>
   )
 }

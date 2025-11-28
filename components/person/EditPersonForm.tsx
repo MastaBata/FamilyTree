@@ -34,6 +34,7 @@ interface Person {
   interesting_facts: string | null
   cause_of_death: string | null
   burial_place: string | null
+  avatar_url: string | null
 }
 
 interface EditPersonFormProps {

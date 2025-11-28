@@ -91,7 +91,13 @@ export default async function TreeDetailPage({ params }: TreePageProps) {
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {persons && persons.length > 0 ? (
-          <TreeView persons={persons} relations={relations || []} treeId={treeId} />
+          <TreeView
+            persons={persons}
+            relations={relations || []}
+            treeId={treeId}
+            userRole={membership.role as 'owner' | 'editor' | 'viewer'}
+            linkedPersonId={membership.linked_person_id}
+          />
         ) : (
           <div className="bg-white rounded-xl shadow-md p-12 text-center">
             <div className="text-6xl mb-4">👤</div>
